@@ -171,3 +171,43 @@ Port 50683
 ```bash
 ssh gde@10.11.200.247 -p 50683
 ```
+
+## Setup SSH access with publickeys.
+
+1. First we have to generate a public/private rsa key pair, on the host machine (Mac OS X in my case).
+
+```bash
+ssh-keygen -t rsa
+```
+
+This command will generate 2 files `id_rsa` and `id_rsa.pub`
+
+- **id_rsa**:  Our private key, should be keep safely, She can be crypted with a password.
+- **id_rsa.pub** Our private key, you have to transfer this one to the server.
+
+2. To do that we can use the `ssh-copy-id` command
+
+```bash
+ssh-copy-id -i id_rsa.pub gde@10.11.200.247 -p 50683
+```
+
+The key is automatically added in `~/.ssh/authorized_keys` on the server
+
+> If you no longer want to have type the key password you can setup a SSH Agent with `ssh-add`
+
+3. Edit the `sshd_config` file `/etc/ssh/sshd.config` to remove root login permit, password authentification 
+
+```bash
+sudo vim /etc/ssh/sshd.conf
+```
+
+- Edit line 32 like: `PermitRootLogin no`
+- Edit line 56 like `PasswordAuthentication no`
+> Don't forget to delete de **#** at the beginning of each line
+
+4. We need to restart the SSH daemon service.
+
+```bash
+sudo /etc/init.d/sshd restart
+```
+
