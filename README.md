@@ -88,6 +88,8 @@ gde     ALL=(ALL:ALL) ALL
 
 ## Setup a static IP <a id="staticIP"></a>
 
+In the settings of our virtualbox machine you have to change the default `NAT` Network Adapter by `Bridged Adapter`
+
 1. First, we have to edit the file `/etc/network/interfaces` and setup our primary network
 
 ```bash
@@ -117,9 +119,9 @@ Output:
 
 ```
 iface enp0s3 inet static
-      address 10.0.2.0
+      address 10.11.200.247
       netmask 255.255.255.252
-      gateway 10.0.2.2
+      gateway 10.11.254.254
 ```
 
 3. Make sure we have a `resolv.conf` file with our favorite DNS
