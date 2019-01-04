@@ -1,11 +1,19 @@
 # roger-skyline-1
 This project, roger-skyline-1 let you install a Virtual Machine, discover the basics about system and network administration as well as a lots of services used on a server machine.
 
-## Virtual Machine Installation
+## Summary <a id="summary"></a>
+
+- [Summary](#summary)
+- [Virtual Machine Installation](#VMinstall)
+- [OS Installation Process](#OSinstall)
+- [Install Depedency](#depedency)
+- [Setup a static IP](#staticIP)
+
+## Virtual Machine Installation <a id="VMinstall"></a>
 
 For this project i choose to emulate a debian 9.6.0 64bits, [Download Debian](https://www.debian.org/distrib/) hosted on macOS X with VirtualBox 5.2.18r124319 [Download VirtualBox](https://www.virtualbox.org/wiki/Downloads)
 
-## OS Installation Process
+## OS Installation Process <a id="OSinstall"></a>
 
 1. I choose `roger` as hostname
 2. I setup the root password
@@ -14,7 +22,7 @@ For this project i choose to emulate a debian 9.6.0 64bits, [Download Debian](ht
 5. I choose XFCE as desktop environnement (he is really light)
 6. Finally I've installed GRUB on the master boot record
 
-## Install Depedency
+## Install Depedency <a id="depedency"></a>
 
 ```bash
 apt-get update -y && apt-get upgrade -y
@@ -23,7 +31,7 @@ apt-get install sudo
 apt-get install vim
 ```
 
-## Configure SUDO
+## Configure SUDO <a id="sudo"></a>
 
 Right after we have installed `sudo`, if we try to use it we will have this error message:
 `gde is not in the sudoers file.`
@@ -78,7 +86,7 @@ gde     ALL=(ALL:ALL) ALL
 ```
 
 
-## Setup a static IP
+## Setup a static IP <a id="staticIP"></a>
 
 1. First, we have to edit the file `/etc/network/interfaces` and setup our primary network
 
