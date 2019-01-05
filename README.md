@@ -208,6 +208,6 @@ sudo vim /etc/ssh/sshd.conf
 4. We need to restart the SSH daemon service.
 
 ```bash
-sudo /etc/init.d/sshd restart
+sudo service sshd restart
 ```
 
