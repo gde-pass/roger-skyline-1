@@ -9,6 +9,7 @@ This project, roger-skyline-1 let you install a Virtual Machine, discover the ba
 - [Install Depedency](#depedency)
 - [Setup a static IP](#staticIP)
 - [Change SSH default Port](#sshPort)
+- [Setup SSH access with publickeys](#sshKey)
 
 ## Virtual Machine Installation <a id="VMinstall"></a>
 
@@ -172,7 +173,7 @@ Port 50683
 ssh gde@10.11.200.247 -p 50683
 ```
 
-## Setup SSH access with publickeys.
+## Setup SSH access with publickeys. <a id="sshKey"></a>
 
 1. First we have to generate a public/private rsa key pair, on the host machine (Mac OS X in my case).
 
