@@ -237,7 +237,7 @@ sudo ufw status
 3. Setup Denial Of Service Attack with ufw
       -limit SSH : `sudo ufw limit 50683/tcp`
 
-What this does is rate limit that port to 6 new connection per ip per 30 seconds.
+> What this does is rate limit that port to 6 new connection per ip per 30 seconds.
       -limit http `sudo vim  /etc/ufw/before.rules`
       
 And add the following lines: 
@@ -276,7 +276,7 @@ And add the following lines:
 
 ### End HTTP ###
 ```
-With the above rules we are limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP.
+> With the above rules we are limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP.
 
 4. We can now block every others outgoing connection
 
