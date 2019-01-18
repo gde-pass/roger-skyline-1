@@ -10,6 +10,7 @@ This project, roger-skyline-1 let you install a Virtual Machine, discover the ba
 - [Setup a static IP](#staticIP)
 - [Change SSH default Port](#sshPort)
 - [Setup SSH access with publickeys](#sshKey)
+- [Setup Firewall with UFW](#ufw)
 
 ## Virtual Machine Installation <a id="VMinstall"></a>
 
@@ -26,11 +27,12 @@ For this project i choose to emulate a debian 9.6.0 64bits, [Download Debian](ht
 
 ## Install Depedency <a id="depedency"></a>
 
+As root:
+
 ```bash
 apt-get update -y && apt-get upgrade -y
 
-apt-get install sudo
-apt-get install vim
+apt-get install sudo vim resolvconf ufw
 ```
 
 ## Configure SUDO <a id="sudo"></a>
@@ -139,6 +141,8 @@ nameserver 8.8.8.8
 nameserver 8.8.4.4
 ```
 
+otherwise, you can edit the `/ etc / resolvconf / resolv.conf.d / base` file and write them
+
 4. You can now restart the network service to make changes effective
 
 ```bash
@@ -212,3 +216,25 @@ sudo vim /etc/ssh/sshd.conf
 sudo service sshd restart
 ```
 
+## Setup Firewall with UFW. <a id="ufw"></a>
+
+1. Make sure ufw is enable
+
+```bash
+sudo ufw status
+```
+ if not you can start the service with
+ 
+ ```bash
+ sudo ufw enable
+ ```
+ 
+2. Setup firewall rules
+      - SSH : `sudo ufw allow 50683`
+      -
+      
+3. Close outgoing traffic
+
+```bash
+sudo ufw default deny outgoing
+```
