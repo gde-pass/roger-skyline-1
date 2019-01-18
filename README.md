@@ -56,7 +56,7 @@ cat /etc/sudoers
 
 Output:
 
-```
+```console
 #
 # This file MUST be edited with the 'visudo' command as root.
 #
@@ -102,7 +102,7 @@ cat /etc/network/interfaces
 
 Output:
 
-```
+```console
 source /etc/network/interfaces.d/*
 
 #The loopback Network interface
@@ -121,7 +121,7 @@ cat /etc/network/interfaces.d/enp0s3
 
 Output:
 
-```
+```console
 iface enp0s3 inet static
       address 10.11.200.247
       netmask 255.255.255.252
@@ -136,7 +136,7 @@ cat /etc/resolv.conf
 
 Output
 
-```
+```console
 nameserver 8.8.8.8
 nameserver 8.8.4.4
 ```
@@ -230,11 +230,57 @@ sudo ufw status
  ```
  
 2. Setup firewall rules
-      - SSH : `sudo ufw allow 50683`
-      -
+      - SSH : `sudo ufw allow 50683/tcp`
+      - HTTP : `sudo ufw allow 80/tcp`
+      - HTTPS : `sudo ufw allow 443/tcp`
+      - DNS : `sudo ufw allow 53/udp`
       
-3. Close outgoing traffic
+3. Setup Denial Of Service Attack with ufw
+      -limit SSH : `sudo ufw limit 50683/tcp`
+
+What this does is rate limit that port to 6 new connection per ip per 30 seconds.
+      -limit http/https `sudo vim  /etc/ufw/before.rules`
+      
+And add the following lines: 
+
+```
+### Add those lines after *filter near the beginning of the file
+:ufw-http - [0:0]
+:ufw-http-logdrop - [0:0]
+
+
+
+### Add those lines near the end of the file
+
+### Start HTTP ###
+
+# Enter rule
+-A ufw-before-input -p tcp --dport 80   -j ufw-http
+-A ufw-before-input -p tcp --dport 443  -j ufw-http
+
+# Limit connections per Class C
+-A ufw-http -p tcp --syn -m connlimit --connlimit-above 50 --connlimit-mask 24 -j ufw-http-logdrop
+
+# Limit connections per IP
+-A ufw-http -m state --state NEW -m recent --name conn_per_ip --set
+-A ufw-http -m state --state NEW -m recent --name conn_per_ip --update --seconds 10 --hitcount 20 -j ufw-http-logdrop
+
+# Limit packets per IP
+-A ufw-http -m recent --name pack_per_ip --set
+-A ufw-http -m recent --name pack_per_ip --update --seconds 1  --hitcount 20  -j ufw-http-logdrop
+
+# Finally accept
+-A ufw-http -j ACCEPT
+
+# Log-A ufw-http-logdrop -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW HTTP DROP] "
+-A ufw-http-logdrop -j DROP
+
+### End HTTP ###
+```
+With the above rules we are limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP.
+
+4. Finally we need to reload our firewall
 
 ```bash
-sudo ufw default deny outgoing
+sudo ufw reload
 ```
