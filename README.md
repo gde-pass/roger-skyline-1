@@ -223,7 +223,7 @@ sudo service sshd restart
 ```bash
 sudo ufw status
 ```
- if not you can start the service with
+ if not we can start the service with
  
  ```bash
  sudo ufw enable
@@ -231,15 +231,14 @@ sudo ufw status
  
 2. Setup firewall rules
       - SSH : `sudo ufw allow 50683/tcp`
-      - HTTP : `sudo ufw allow 80/tcp`
-      - HTTPS : `sudo ufw allow 443/tcp`
-      - DNS : `sudo ufw allow 53/udp`
+      - HTTP : `sudo ufw allow out 80/tcp`
+      - DNS : `sudo ufw allow out 53/udp`
       
 3. Setup Denial Of Service Attack with ufw
       -limit SSH : `sudo ufw limit 50683/tcp`
 
 What this does is rate limit that port to 6 new connection per ip per 30 seconds.
-      -limit http/https `sudo vim  /etc/ufw/before.rules`
+      -limit http `sudo vim  /etc/ufw/before.rules`
       
 And add the following lines: 
 
@@ -279,8 +278,26 @@ And add the following lines:
 ```
 With the above rules we are limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP.
 
-4. Finally we need to reload our firewall
+4. We can now block every others outgoing connection
+
+```bash
+sudo ufw default deny outgoing
+```
+
+5. (OPTIONNAL) if you want to allow ping you can add the following lines in `/etc/ufw/before.rules`
+
+```console
+# Allow ping
+-A ufw-before-output -p icmp --icmp-type destination-unreachable -j ACCEPT
+-A ufw-before-output -p icmp --icmp-type source-quench -j ACCEPT
+-A ufw-before-output -p icmp --icmp-type time-exceeded -j ACCEPT
+-A ufw-before-output -p icmp --icmp-type parameter-problem -j ACCEPT
+-A ufw-before-output -p icmp --icmp-type echo-request -j ACCEPT
+```
+
+6. Finally we need to reload our firewall
 
 ```bash
 sudo ufw reload
 ```
+
