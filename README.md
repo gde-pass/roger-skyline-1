@@ -11,6 +11,8 @@ This project, roger-skyline-1 let you install a Virtual Machine, discover the ba
 - [Change SSH default Port](#sshPort)
 - [Setup SSH access with publickeys](#sshKey)
 - [Setup Firewall with UFW](#ufw)
+- [Protection against port scans](#scanSecure)
+- [Stop the services we don’t need ](#stopServices)
 
 ## Virtual Machine Installation <a id="VMinstall"></a>
 
@@ -32,7 +34,7 @@ As root:
 ```bash
 apt-get update -y && apt-get upgrade -y
 
-apt-get install sudo vim resolvconf ufw
+apt-get install sudo vim resolvconf ufw ipset -y
 ```
 
 ## Configure SUDO <a id="sudo"></a>
@@ -299,3 +301,46 @@ sudo ufw default deny outgoing
 sudo ufw reload
 ```
 
+## Protection against port scans. <a id="scanSecure"></a>
+
+1. First create ipset lists
+
+```bash
+ipset create port_scanners hash:ip family inet hashsize 32768 maxelem 65536 timeout 600
+ipset create scanned_ports hash:ip,port family inet hashsize 32768 maxelem 65536 timeout 60
+```
+
+2. And iptables rules
+
+```bash
+iptables -A INPUT -m state --state INVALID -j DROP
+iptables -A INPUT -m state --state NEW -m set ! --match-set scanned_ports src,dst -m hashlimit --hashlimit-above 1/hour --hashlimit-burst 5 --hashlimit-mode srcip --hashlimit-name portscan --hashlimit-htable-expire 10000 -j SET --add-set port_scanners src --exist
+iptables -A INPUT -m state --state NEW -m set --match-set port_scanners src -j DROP
+iptables -A INPUT -m state --state NEW -j SET --add-set scanned_ports src,dst
+```
+
+> Here we store scanned ports in scanned_ports set and we only count newly scanned ports on our hashlimit rule. If a scanner send packets to 5 different port (see --hashlimit-burst 5) that means it is a probably scanner so we will add it to port_scanners set.
+Timeout of port_scanners is the block time of scanners(10 minutes in that example). It will start counting from beginning (see --exist) till attacker stop scan for 10 seconds (see --hashlimit-htable-expire 10000)
+
+## Stop the services we don’t need  <a id="stopServices"></a>
+
+```bash
+sudo systemctl disable anacron.servive
+sudo systemctl disable anacron.timer
+sudo systemctl disable lightdm.service
+sudo systemctl disable avahi-daemon.service
+sudo systemctl disable avahi-daemon.socket
+sudo systemctl disable console-setup.service
+sudo systemctl disable dbus-org.freedesktop.ModemManager1.service
+sudo systemctl disable dbus-org.freedesktop.nm-dispatcher.service
+sudo systemctl disable keyboard-setup.service
+sudo systemctl disable lm-sensors.service
+sudo systemctl disable apt-daily.timer
+sudo systemctl disable apt-daily-upgrade.timer
+sudo systemctl disable syslog.service
+sudo systemctl disable ssh.service
+sudo systemctl disable rtkit-daemon.service
+sudo systemctl disable resolvconf.service
+sudo systemctl disable pppd-dns.service
+sudo systemctl disable NetworkManager-wait-online.service
+```
