@@ -12,7 +12,8 @@ This project, roger-skyline-1 let you install a Virtual Machine, discover the ba
 - [Setup SSH access with publickeys](#sshKey)
 - [Setup Firewall with UFW](#ufw)
 - [Protection against port scans](#scanSecure)
-- [Stop the services we don’t need ](#stopServices)
+- [Stop the services we don’t need](#stopServices)
+- [Update Packages](#updateApt)
 
 ## Virtual Machine Installation <a id="VMinstall"></a>
 
@@ -79,7 +80,7 @@ Defaults        secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbi$
 
 # User privilege specification
 root    ALL=(ALL:ALL) ALL
-gde     ALL=(ALL:ALL) ALL
+gde     ALL=(ALL:ALL) NOPASSWD:ALL
 
 # Members of the admin group may gain root privileges
 
@@ -89,6 +90,7 @@ gde     ALL=(ALL:ALL) ALL
 # See sudoers(5) for more information on "#include" directives:
 
 #includedir /etc/sudoers.d
+gde ALL=NOPASSWD: /usr/bin/apt-get
 ```
 
 
@@ -322,7 +324,7 @@ iptables -A INPUT -m state --state NEW -j SET --add-set scanned_ports src,dst
 > Here we store scanned ports in scanned_ports set and we only count newly scanned ports on our hashlimit rule. If a scanner send packets to 5 different port (see --hashlimit-burst 5) that means it is a probably scanner so we will add it to port_scanners set.
 Timeout of port_scanners is the block time of scanners(10 minutes in that example). It will start counting from beginning (see --exist) till attacker stop scan for 10 seconds (see --hashlimit-htable-expire 10000)
 
-## Stop the services we don’t need  <a id="stopServices"></a>
+## Stop the services we don’t need <a id="stopServices"></a>
 
 ```bash
 sudo systemctl disable anacron.servive
@@ -338,9 +340,31 @@ sudo systemctl disable lm-sensors.service
 sudo systemctl disable apt-daily.timer
 sudo systemctl disable apt-daily-upgrade.timer
 sudo systemctl disable syslog.service
-sudo systemctl disable ssh.service
 sudo systemctl disable rtkit-daemon.service
-sudo systemctl disable resolvconf.service
 sudo systemctl disable pppd-dns.service
 sudo systemctl disable NetworkManager-wait-online.service
+```
+
+## Update Packages <a id="updateApt"></a>
+
+1. Create the `update.sh` file and write the following lines inside
+
+```bash
+echo "sudo apt-get update -y && apt-get upgrade -y >> /var/log/update_script.log" >> ~/update.sh
+```
+
+2. Add the task to cron
+
+```bash
+crontab -e
+```
+
+3. Write in the openned file thoses lines
+
+```bash
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+@reboot sudo ~/update.sh
+0 4 * * 6 sudo ~/update.sh
 ```
