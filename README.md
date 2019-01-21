@@ -412,3 +412,6 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 0 4 * * 6 sudo ~/update.sh
 0 0 * * * sudo ~/cronMonitor.sh
 ```
+## Deploy a Web application reacheable on the machine IP's
+
+You just have to copy into the folder `/var/www/html/` your web application.
