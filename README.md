@@ -14,6 +14,7 @@ This project, roger-skyline-1 let you install a Virtual Machine, discover the ba
 - [Protection against port scans](#scanSecure)
 - [Stop the services we don’t need](#stopServices)
 - [Update Packages](#updateApt)
+- [Monitor Crontab Changes](#cronChange)
 
 ## Virtual Machine Installation <a id="VMinstall"></a>
 
@@ -367,4 +368,47 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 
 @reboot sudo ~/update.sh
 0 4 * * 6 sudo ~/update.sh
+```
+
+## Monitor Crontab Changes <a id="cronChange"></a>
+
+1. Create the `cronMonitor.sh` file and write the following lines inside
+
+
+```console
+gde@roger-skyline-1:~$ cat ~/cronMonitor.sh
+#!/bin/bash
+
+FILE="/var/tmp/checksum"
+FILE_TO_WATCH="/etc/crontab"
+MD5VALUE=$(md5sum $FILE_TO_WATCH)
+
+if [ ! -f $FILE ]
+then
+	 echo "$MD5VALUE" > $FILE
+	 exit 0;
+fi;
+
+if [ "$MD5VALUE" != "$(cat $FILE)" ];
+	then
+	echo "$MD5VALUE" > $FILE
+	echo "$FILE_TO_WATCH has been modified ! '*_*" | mail -s "$FILE_TO_WATCH modified !" root
+fi;
+```
+
+2. Add the task to cron
+
+```bash
+crontab -e
+```
+
+3. Write in the openned file thoses lines
+
+```bash
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+@reboot sudo ~/update.sh
+0 4 * * 6 sudo ~/update.sh
+0 0 * * * sudo ~/cronMonitor.sh
 ```
