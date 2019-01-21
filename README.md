@@ -36,7 +36,7 @@ As root:
 ```bash
 apt-get update -y && apt-get upgrade -y
 
-apt-get install sudo vim resolvconf ufw ipset -y
+apt-get install sudo vim resolvconf ufw ipset apache2 -y
 ```
 
 ## Configure SUDO <a id="sudo"></a>
