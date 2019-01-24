@@ -237,6 +237,7 @@ sudo ufw status
 2. Setup firewall rules
       - SSH : `sudo ufw allow 50683/tcp`
       - HTTP : `sudo ufw allow out 80/tcp`
+      - HTTPS : `sudo ufw allow 443`
       - DNS : `sudo ufw allow out 53/udp`
       
 3. Setup Denial Of Service Attack with ufw
