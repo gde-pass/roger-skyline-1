@@ -37,7 +37,7 @@ As root:
 ```bash
 apt-get update -y && apt-get upgrade -y
 
-apt-get install sudo vim resolvconf ufw ipset apache2 -y
+apt-get install sudo vim resolvconf ufw portsentry ipset apache2 -y
 ```
 
 ## Configure SUDO <a id="sudo"></a>
@@ -92,7 +92,6 @@ gde     ALL=(ALL:ALL) NOPASSWD:ALL
 # See sudoers(5) for more information on "#include" directives:
 
 #includedir /etc/sudoers.d
-gde ALL=NOPASSWD: /usr/bin/apt-get
 ```
 
 
@@ -326,6 +325,40 @@ iptables -A INPUT -m state --state NEW -j SET --add-set scanned_ports src,dst
 > Here we store scanned ports in scanned_ports set and we only count newly scanned ports on our hashlimit rule. If a scanner send packets to 5 different port (see --hashlimit-burst 5) that means it is a probably scanner so we will add it to port_scanners set.
 Timeout of port_scanners is the block time of scanners(10 minutes in that example). It will start counting from beginning (see --exist) till attacker stop scan for 10 seconds (see --hashlimit-htable-expire 10000)
 
+3. Config portsentry
+
+First, we have to edit the `/etc/default/portsentry` file
+
+```console
+TCP_MODE="atcp"
+UDP_MODE="audp"
+```
+
+After, edit the file `/etc/portsentry/portsentry.conf`
+
+```console
+BLOCK_UDP="1"
+BLOCK_TCP="1"
+```
+
+Comment the current KILL_ROUTE and uncomment the following one:
+
+```console
+KILL_ROUTE="/sbin/iptables -I INPUT -s $TARGET$ -j DROP"
+```
+
+Modify the KILL_RUN_CMD
+
+```console
+KILL_RUN_CMD="/sbin/iptables -I INPUT -s $TARGET$ -j DROP && /sbin/iptables -I INPUT -s $TARGET$ -m limit --limit 3/minute --limit-burst 5 -j LOG --log-level debug --log-prefix 'Portsentry: dropping: '"
+```
+
+We can now restart the service to make changes effectives
+
+```bash
+sudo service portsentry restart
+```
+
 ## Stop the services we don’t need <a id="stopServices"></a>
 
 ```bash
@@ -345,6 +378,7 @@ sudo systemctl disable syslog.service
 sudo systemctl disable rtkit-daemon.service
 sudo systemctl disable pppd-dns.service
 sudo systemctl disable NetworkManager-wait-online.service
+sudo service speech-dispatcher disable
 ```
 
 ## Update Packages <a id="updateApt"></a>
@@ -416,3 +450,108 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 ## Deploy a Web application reacheable on the machine IP's <a id="apache"></a>
 
 You just have to copy into the folder `/var/www/html/` your web application.
+
+## Configure SSL Certificates
+
+
+Generate the SLL certificate with this command
+
+```bash
+sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -subj "/C=FR/ST=IDF/O=42/OU=Project-roger/CN=10.11.200.247" -keyout /etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt
+```
+
+Edit the `/etc/apache2/conf-available/ssl-params.conf` file to have this output:
+
+```console
+<VirtualHost *:80>
+        # The ServerName directive sets the request scheme, hostname and port that
+        # the server uses to identify itself. This is used when creating
+        # redirection URLs. In the context of virtual hosts, the ServerName
+        # specifies what hostname must appear in the request's Host: header to
+        # match this virtual host. For the default virtual host (this file) this
+        # value is not decisive as it is used as a last resort host regardless.
+        # However, you must set it for any further virtual host explicitly.
+        #ServerName www.example.com
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+
+        Redirect "/" "https://10.11.200.247/"
+        # Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
+        # error, crit, alert, emerg.
+        # It is also possible to configure the loglevel for particular
+        # modules, e.g.
+        #LogLevel info ssl:warn
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+        CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+        # For most configuration files from conf-available/, which are
+        # enabled or disabled at a global level, it is possible to
+        # include a line for only one particular virtual host. For example the
+        # following line enables the CGI configuration for this host only
+        # after it has been globally disabled with "a2disconf".
+        #Include conf-available/serve-cgi-bin.conf
+</VirtualHost>
+
+# vim: syntax=apache ts=4 sw=4 sts=4 sr noet
+```
+
+This is to redirect the user to the https protocol.
+
+after you have to edit the `/etc/apache2/sites-available/default-ssl.conf` to have this output
+
+```console
+
+<IfModule mod_ssl.c>
+	<VirtualHost _default_:443>
+		ServerAdmin gde-pass@student.42.fr
+		ServerName	192.168.99.100
+
+		DocumentRoot /var/www/html
+
+		ErrorLog ${APACHE_LOG_DIR}/error.log
+		CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+		SSLEngine on
+
+		SSLCertificateFile	/etc/ssl/certs/apache-selfsigned.crt
+		SSLCertificateKeyFile /etc/ssl/private/apache-selfsigned.key
+
+		<FilesMatch "\.(cgi|shtml|phtml|php)$">
+				SSLOptions +StdEnvVars
+		</FilesMatch>
+		<Directory /usr/lib/cgi-bin>
+				SSLOptions +StdEnvVars
+		</Directory>
+
+	</VirtualHost>
+</IfModule>
+```
+
+And finally create the `/etc/apache2/conf-available/ssl-params.conf` file and writte the followings line inside
+
+```console
+SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
+SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+SSLHonorCipherOrder On
+
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
+
+SSLCompression off
+SSLUseStapling on
+SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
+
+SSLSessionTickets Off
+```
+
+And to load our new config run those commands:
+
+```bash
+sudo a2enmod ssl
+sudo a2enmod headers
+sudo a2ensite default-ssl
+sudo a2enconf ssl-params
+systemctl reload apache2
+```
