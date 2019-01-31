@@ -375,8 +375,8 @@ gde@roger-skyline-1:~$ cat ~/cronMonitor.sh
 #!/bin/bash
 
 FILE="/var/tmp/checksum"
-FILE_TO_WATCH="/etc/crontab"
-MD5VALUE=$(md5sum $FILE_TO_WATCH)
+FILE_TO_WATCH="/var/spool/cron/crontabs/gde"
+MD5VALUE=$(sudo md5sum $FILE_TO_WATCH)
 
 if [ ! -f $FILE ]
 then
