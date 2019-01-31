@@ -307,6 +307,12 @@ Comment the current KILL_ROUTE and uncomment the following one:
 KILL_ROUTE="/sbin/iptables -I INPUT -s $TARGET$ -j DROP"
 ```
 
+Comment the following line:
+
+```console
+KILL_HOSTS_DENY="ALL: $TARGET$ : DENY
+```
+
 2. We can now restart the service to make changes effectives
 
 ```bash
