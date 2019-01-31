@@ -27,7 +27,7 @@ For this project i choose to emulate a debian 9.6.0 64bits, [Download Debian](ht
 2. I setup the root password
 3. I create a new non-root user called `gde` and his password.
 4. I create a primary partition mounted on `/` with 4.2Gb of space and a other one logical mounted on `/home`
-5. I choose XFCE as desktop environnement (he is really light)
+5. I choose not to install desktop environnement
 6. Finally I've installed GRUB on the master boot record
 
 ## Install Depedency <a id="depedency"></a>
@@ -37,7 +37,7 @@ As root:
 ```bash
 apt-get update -y && apt-get upgrade -y
 
-apt-get install sudo vim resolvconf ufw portsentry ipset apache2 -y
+apt-get install sudo vim ufw portsentry fail2ban apache2 -y
 ```
 
 ## Configure SUDO <a id="sudo"></a>
@@ -133,28 +133,13 @@ iface enp0s3 inet static
       gateway 10.11.254.254
 ```
 
-3. Make sure we have a `resolv.conf` file with our favorite DNS
-
-```bash
-cat /etc/resolv.conf
-```
-
-Output
-
-```console
-nameserver 8.8.8.8
-nameserver 8.8.4.4
-```
-
-otherwise, you can edit the `/ etc / resolvconf / resolv.conf.d / base` file and write them
-
-4. You can now restart the network service to make changes effective
+3. You can now restart the network service to make changes effective
 
 ```bash
 sudo service networking restart
 ```
 
-5. You can check the result with the following command:
+4. You can check the result with the following command:
 
 ```bash
 ip addr
@@ -236,56 +221,48 @@ sudo ufw status
  
 2. Setup firewall rules
       - SSH : `sudo ufw allow 50683/tcp`
-      - HTTP : `sudo ufw allow out 80/tcp`
+      - HTTP : `sudo ufw allow 80/tcp`
       - HTTPS : `sudo ufw allow 443`
-      - DNS : `sudo ufw allow out 53/udp`
       
-3. Setup Denial Of Service Attack with ufw
-      -limit SSH : `sudo ufw limit 50683/tcp`
-      -limit http `sudo vim  /etc/ufw/before.rules`
+3. Setup Denial Of Service Attack with fail2ban
       
-And add the following lines: 
-
+```bash
+sudo vim /etc/fail2ban/jail.conf
 ```
-### Add those lines after *filter near the beginning of the file
-:ufw-http - [0:0]
-:ufw-http-logdrop - [0:0]
 
+```console
+[sshd]
+enabled = true
+port    = 42
+logpath = %(sshd_log)s
+backend = %(sshd_backend)s
+maxretry = 3
+bantime = 600
 
-
-### Add those lines near the end of the file
-
-### Start HTTP ###
-
-# Enter rule
--A ufw-before-input -p tcp --dport 80   -j ufw-http
--A ufw-before-input -p tcp --dport 443  -j ufw-http
-
-# Limit connections per Class C
--A ufw-http -p tcp --syn -m connlimit --connlimit-above 50 --connlimit-mask 24 -j ufw-http-logdrop
-
-# Limit connections per IP
--A ufw-http -m state --state NEW -m recent --name conn_per_ip --set
--A ufw-http -m state --state NEW -m recent --name conn_per_ip --update --seconds 10 --hitcount 20 -j ufw-http-logdrop
-
-# Limit packets per IP
--A ufw-http -m recent --name pack_per_ip --set
--A ufw-http -m recent --name pack_per_ip --update --seconds 1  --hitcount 20  -j ufw-http-logdrop
-
-# Finally accept
--A ufw-http -j ACCEPT
-
-# Log-A ufw-http-logdrop -m limit --limit 3/min --limit-burst 10 -j LOG --log-prefix "[UFW HTTP DROP] "
--A ufw-http-logdrop -j DROP
-
-### End HTTP ###
+#Add after HTTP servers:
+[http-get-dos]
+enabled = true
+port = http,https
+filter = http-get-dos
+logpath = /var/log/apache2/access.log (le fichier d'access sur server web)
+maxretry = 300
+findtime = 300
+bantime = 600
+action = iptables[name=HTTP, port=http, protocol=tcp]
 ```
-> With the above rules we are limiting the connections per IP at 20 connections / 10 seconds / IP and the packets to 20 packets / second / IP for http and this does is rate limit that port to 6 new connection per ip per 30 seconds for SSH.
 
-4. We can now block every others outgoing connection
+Add http-get-dos filter
 
 ```bash
-sudo ufw default deny outgoing
+sudo cat /etc/fail2ban/filter.d/http-get-dos.conf
+```
+
+Output:
+
+```console
+[Definition]
+failregex = ^<HOST> -.*"(GET|POST).*
+ignoreregex =
 ```
 
 5. (OPTIONNAL) if you want to allow ping you can add the following lines in `/etc/ufw/before.rules`
@@ -299,34 +276,16 @@ sudo ufw default deny outgoing
 -A ufw-before-output -p icmp --icmp-type echo-request -j ACCEPT
 ```
 
-6. Finally we need to reload our firewall
+6. Finally we need to reload our firewall and fail2ban
 
 ```bash
 sudo ufw reload
+sudo service fail2ban restart
 ```
 
 ## Protection against port scans. <a id="scanSecure"></a>
 
-1. First create ipset lists
-
-```bash
-ipset create port_scanners hash:ip family inet hashsize 32768 maxelem 65536 timeout 600
-ipset create scanned_ports hash:ip,port family inet hashsize 32768 maxelem 65536 timeout 60
-```
-
-2. And iptables rules
-
-```bash
-iptables -A INPUT -m state --state INVALID -j DROP
-iptables -A INPUT -m state --state NEW -m set ! --match-set scanned_ports src,dst -m hashlimit --hashlimit-above 1/hour --hashlimit-burst 5 --hashlimit-mode srcip --hashlimit-name portscan --hashlimit-htable-expire 10000 -j SET --add-set port_scanners src --exist
-iptables -A INPUT -m state --state NEW -m set --match-set port_scanners src -j DROP
-iptables -A INPUT -m state --state NEW -j SET --add-set scanned_ports src,dst
-```
-
-> Here we store scanned ports in scanned_ports set and we only count newly scanned ports on our hashlimit rule. If a scanner send packets to 5 different port (see --hashlimit-burst 5) that means it is a probably scanner so we will add it to port_scanners set.
-Timeout of port_scanners is the block time of scanners(10 minutes in that example). It will start counting from beginning (see --exist) till attacker stop scan for 10 seconds (see --hashlimit-htable-expire 10000)
-
-3. Config portsentry
+1. Config portsentry
 
 First, we have to edit the `/etc/default/portsentry` file
 
@@ -348,13 +307,7 @@ Comment the current KILL_ROUTE and uncomment the following one:
 KILL_ROUTE="/sbin/iptables -I INPUT -s $TARGET$ -j DROP"
 ```
 
-Modify the KILL_RUN_CMD
-
-```console
-KILL_RUN_CMD="/sbin/iptables -I INPUT -s $TARGET$ -j DROP && /sbin/iptables -I INPUT -s $TARGET$ -m limit --limit 3/minute --limit-burst 5 -j LOG --log-level debug --log-prefix 'Portsentry: dropping: '"
-```
-
-We can now restart the service to make changes effectives
+2. We can now restart the service to make changes effectives
 
 ```bash
 sudo service portsentry restart
