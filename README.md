@@ -37,7 +37,7 @@ As root:
 ```bash
 apt-get update -y && apt-get upgrade -y
 
-apt-get install sudo vim ufw portsentry fail2ban apache2 -y
+apt-get install sudo vim ufw portsentry fail2ban apache2 mailutils -y
 ```
 
 ## Configure SUDO <a id="sudo"></a>
@@ -265,7 +265,7 @@ failregex = ^<HOST> -.*"(GET|POST).*
 ignoreregex =
 ```
 
-5. (OPTIONNAL) if you want to allow ping you can add the following lines in `/etc/ufw/before.rules`
+4. (OPTIONNAL) if you want to allow ping you can add the following lines in `/etc/ufw/before.rules`
 
 ```console
 # Allow ping
@@ -276,7 +276,7 @@ ignoreregex =
 -A ufw-before-output -p icmp --icmp-type echo-request -j ACCEPT
 ```
 
-6. Finally we need to reload our firewall and fail2ban
+5. Finally we need to reload our firewall and fail2ban
 
 ```bash
 sudo ufw reload
@@ -340,13 +340,14 @@ sudo service speech-dispatcher disable
 1. Create the `update.sh` file and write the following lines inside
 
 ```bash
-echo "sudo apt-get update -y && apt-get upgrade -y >> /var/log/update_script.log" >> ~/update.sh
+echo "sudo apt-get update -y >> /var/log/update_script.log" >> ~/update.sh
+echo "sudo apt-get upgrade -y >> /var/log/update_script.log" >> ~/update.sh
 ```
 
 2. Add the task to cron
 
 ```bash
-crontab -e
+sudo crontab -e
 ```
 
 3. Write in the openned file thoses lines
@@ -362,7 +363,6 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 ## Monitor Crontab Changes <a id="cronChange"></a>
 
 1. Create the `cronMonitor.sh` file and write the following lines inside
-
 
 ```console
 gde@roger-skyline-1:~$ cat ~/cronMonitor.sh
@@ -401,6 +401,21 @@ PATH=/sbin:/bin:/usr/sbin:/usr/bin
 0 4 * * 6 sudo ~/update.sh
 0 0 * * * sudo ~/cronMonitor.sh
 ```
+
+4. Make sure we have correct rights
+
+```bash
+sudo chmod 755 cronMonitor.sh
+sudo chmod 755 update.sh
+sudo chown gde /var/mail/gde
+```
+
+5. make sure cron service is enable
+
+```bash
+sudo systemctl enable cron
+```
+
 ## Deploy a Web application reacheable on the machine IP's <a id="apache"></a>
 
 You just have to copy into the folder `/var/www/html/` your web application.
