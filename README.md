@@ -322,23 +322,11 @@ sudo service portsentry restart
 ## Stop the services we don’t need <a id="stopServices"></a>
 
 ```bash
-sudo systemctl disable anacron.servive
-sudo systemctl disable anacron.timer
-sudo systemctl disable lightdm.service
-sudo systemctl disable avahi-daemon.service
-sudo systemctl disable avahi-daemon.socket
 sudo systemctl disable console-setup.service
-sudo systemctl disable dbus-org.freedesktop.ModemManager1.service
-sudo systemctl disable dbus-org.freedesktop.nm-dispatcher.service
 sudo systemctl disable keyboard-setup.service
-sudo systemctl disable lm-sensors.service
 sudo systemctl disable apt-daily.timer
 sudo systemctl disable apt-daily-upgrade.timer
 sudo systemctl disable syslog.service
-sudo systemctl disable rtkit-daemon.service
-sudo systemctl disable pppd-dns.service
-sudo systemctl disable NetworkManager-wait-online.service
-sudo service speech-dispatcher disable
 ```
 
 ## Update Packages <a id="updateApt"></a>
@@ -435,46 +423,24 @@ Generate the SLL certificate with this command
 sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 -subj "/C=FR/ST=IDF/O=42/OU=Project-roger/CN=10.11.200.247" -keyout /etc/ssl/private/apache-selfsigned.key -out /etc/ssl/certs/apache-selfsigned.crt
 ```
 
-Edit the `/etc/apache2/conf-available/ssl-params.conf` file to have this output:
+Create the `/etc/apache2/conf-available/ssl-params.conf` file to have this output:
 
 ```console
-<VirtualHost *:80>
-        # The ServerName directive sets the request scheme, hostname and port that
-        # the server uses to identify itself. This is used when creating
-        # redirection URLs. In the context of virtual hosts, the ServerName
-        # specifies what hostname must appear in the request's Host: header to
-        # match this virtual host. For the default virtual host (this file) this
-        # value is not decisive as it is used as a last resort host regardless.
-        # However, you must set it for any further virtual host explicitly.
-        #ServerName www.example.com
+SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
+SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
+SSLHonorCipherOrder On
 
-        ServerAdmin webmaster@localhost
-        DocumentRoot /var/www/html
+Header always set X-Frame-Options DENY
+Header always set X-Content-Type-Options nosniff
 
-        Redirect "/" "https://10.11.200.247/"
-        # Available loglevels: trace8, ..., trace1, debug, info, notice, warn,
-        # error, crit, alert, emerg.
-        # It is also possible to configure the loglevel for particular
-        # modules, e.g.
-        #LogLevel info ssl:warn
+SSLCompression off
+SSLUseStapling on
+SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
 
-        ErrorLog ${APACHE_LOG_DIR}/error.log
-        CustomLog ${APACHE_LOG_DIR}/access.log combined
-
-        # For most configuration files from conf-available/, which are
-        # enabled or disabled at a global level, it is possible to
-        # include a line for only one particular virtual host. For example the
-        # following line enables the CGI configuration for this host only
-        # after it has been globally disabled with "a2disconf".
-        #Include conf-available/serve-cgi-bin.conf
-</VirtualHost>
-
-# vim: syntax=apache ts=4 sw=4 sts=4 sr noet
+SSLSessionTickets Off
 ```
 
-This is to redirect the user to the https protocol.
-
-after you have to edit the `/etc/apache2/sites-available/default-ssl.conf` to have this output
+Edit the `/etc/apache2/sites-available/default-ssl.conf` to have this output
 
 ```console
 
@@ -504,21 +470,20 @@ after you have to edit the `/etc/apache2/sites-available/default-ssl.conf` to ha
 </IfModule>
 ```
 
-And finally create the `/etc/apache2/conf-available/ssl-params.conf` file and writte the followings line inside
+And finally Edit the `/etc/apache2/sites-available/000-default.conf` file and writte the followings line inside
 
 ```console
-SSLCipherSuite EECDH+AESGCM:EDH+AESGCM:AES256+EECDH:AES256+EDH
-SSLProtocol All -SSLv2 -SSLv3 -TLSv1 -TLSv1.1
-SSLHonorCipherOrder On
+<VirtualHost *:80>
 
-Header always set X-Frame-Options DENY
-Header always set X-Content-Type-Options nosniff
+	ServerAdmin webmaster@localhost
+	DocumentRoot /var/www/html
 
-SSLCompression off
-SSLUseStapling on
-SSLStaplingCache "shmcb:logs/stapling-cache(150000)"
+	Redirect "/" "https://192.168.99.100/"
 
-SSLSessionTickets Off
+	ErrorLog ${APACHE_LOG_DIR}/error.log
+	CustomLog ${APACHE_LOG_DIR}/access.log combined
+
+</VirtualHost>
 ```
 
 And to load our new config run those commands:
